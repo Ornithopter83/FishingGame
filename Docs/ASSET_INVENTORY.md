@@ -1,0 +1,66 @@
+# Asset Inventory
+
+조사일: 2026-07-13
+
+## 초기 정적 집계
+
+대상은 `ExportedProject/Assets`이며 파일을 이동하거나 수정하지 않았다.
+
+| 유형 | 수량 |
+|---|---:|
+| 전체 파일 | 17,539 |
+| `.meta` | 8,651 |
+| `.asset` | 3,289 |
+| `.png` | 2,639 |
+| `.mat` | 1,121 |
+| `.cs` | 362 |
+| `.prefab` | 316 |
+| `.shader` | 272 |
+| `.anim` | 230 |
+| `.controller` | 194 |
+| `.bundle` | 185 |
+| `.ogg` | 97 |
+| `.dll` | 47 |
+| `.unity` | 15 |
+
+총 파일 크기는 약 16,750,275,480 bytes다.
+
+## Meta 상태
+
+- `.meta`가 없는 비-meta 파일: 237개
+- 대응 원본이 없는 orphan `.meta`: 0개
+- 위 수치는 폴더 `.meta`가 아니라 파일 짝만 비교한 초기 결과다.
+- 일부 누락은 역추출 도구가 생성한 소스/보조 파일일 수 있어 자동 생성하거나 삭제하지 않는다.
+
+## Scene
+
+Build Settings에 활성화된 Scene:
+
+1. `Assets/Scenes/Title.unity`
+2. `Assets/Scenes/LoadingScene.unity`
+3. `Assets/Scenes/LastScene.unity`
+
+해시형 이름의 Scene 12개가 추가로 존재한다. 용도와 참조는 미확인이다.
+
+## 우선 조사 대상
+
+| ID | 경로/유형 | 상태 | 예상 용도 | 우선순위 |
+|---|---|---|---|---|
+| SCN-001 | `Assets/Scenes/Title.unity` | Recovered 후보 | 타이틀/진입 | P0 |
+| SCN-002 | `Assets/Scenes/LoadingScene.unity` | Recovered 후보 | 로딩 | P0 |
+| SCN-003 | `Assets/Scenes/LastScene.unity` | Recovered 후보 | 메인 게임/종료 미확정 | P0 |
+| SRC-001 | `Assets/Scripts/StateManager.cs` | Recovered 후보 | 상태 전환 | P0 |
+| SRC-002 | `Assets/Scripts/RodCont.cs` | Recovered 후보 | 낚싯대/캐스팅 | P0 |
+| SRC-003 | `Assets/Scripts/TensionCont.cs` | Recovered 후보 | Fight/Holding | P0 |
+| DAT-001 | `Assets/Resources`, `StreamingAssets` | Unknown | 데이터/설정 | P0 |
+| PLG-001 | `Assets/Plugins` | Unknown | 네이티브/서드파티 | P0 |
+
+## 아직 확인하지 않은 항목
+
+- YAML의 모든 GUID 참조와 실제 `.meta` GUID 대조
+- Missing Script 목록
+- Material → Shader 누락
+- Animator Controller → AnimationClip 누락
+- AudioMixer/AudioClip, TMP Font 참조
+- 중복 GUID와 path ID map 활용 가능성
+
