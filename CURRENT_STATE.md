@@ -4,46 +4,53 @@
 
 ## 현재 단계
 
-- Phase 0: 원본 보존 및 조사
-- 복원 수준: R1(구조 확인) 착수
-- 빌드/Unity 실행: 미수행
-- 커밋/푸시: 미수행
+- Phase 0 기초 정보와 원본 구조 조사 완료
+- Phase 1 Scene 단위 복원 진행 중
+- 복원 수준: 구조 R1, Bootstrap/Loading 기본 흐름 R2
+- Unity 검증 버전: `2022.3.62f3`
+- Git: 사용자가 첫 커밋과 `origin/main` 푸시 완료
+- 이번 작업에서 빌드, 커밋, 푸시 미수행
 
-## 이번에 완료한 내용
+## 기본 정책
 
-- 복구 마스터 가이드 검토
-- `ExportedProject/`와 `AuxiliaryFiles/`를 원본 보존 영역으로 지정
-- 새 `UnityProject/` 디렉터리와 `2022.3.62f3` 목표 골격 생성
-- 복구 정책, 상태 흐름, 에셋 현황, DLL 분석 초안 및 Phase 0 task 생성
-- GitHub 원격 `Ornithopter83/FishingGame.git`이 접근 가능하지만 현재 ref가 없는 빈 저장소임을 읽기 전용으로 확인
-- 로컬 Git 저장소를 `main`으로 초기화하고 위 주소를 `origin`으로 연결(커밋/풀/푸시 없음)
+- `ExportedProject/`, `AuxiliaryFiles/`는 읽기 전용 원본 증거다.
+- 실제 코드와 자산은 `UnityProject/Assets`의 정상 제작 폴더에 배치한다.
+- `_ReferenceTemp`는 선택적인 임시 참조 영역이며 런타임 의존을 허용하지 않는다.
+- 출처와 추정 상태는 문서와 task에 기록하고 제작 이름에 `Recovery` 접두어를 붙이지 않는다.
 
-## 확인된 원본 현황
+## 완료한 내용
 
-- `ExportedProject/Assets`: 17,539개 파일, 약 16.75 GB
-- 주요 수량: `.cs` 362, `.unity` 15, `.prefab` 316, `.asset` 3,289, `.mat` 1,121, `.shader` 272
-- `.meta` 없음: 파일 기준 237개(초기 정적 조사)
-- Build Settings: `Title`, `LoadingScene`, `LastScene` 3개 활성
-- 핵심 타입 소스 존재: `StateManager`, `FishGameManager`, `StageManager`, `DataManager`, `RodCont`, `TensionCont`
-- 목표 Unity `2022.3.62f3`은 로컬에 설치되어 있지 않음
+- `Docs/ORIGINAL_STRUCTURE_MAP.md`에 핵심 코드, Scene 역할, Gameplay map 구조 지도 작성
+- 핵심 C# 8개와 `Assembly-CSharp.dll`의 공개 member 이름 대응 확인
+- Build Settings 원본 Scene `Title`, `LoadingScene`, `LastScene` 확인
+- Addressables Scene 12개 중 선택 Scene 1개와 Gameplay Scene 11개의 역할/지역명 매핑
+- 정상 구조 `Assets/Scripts`, `Scenes`, `Prefabs`, `Art`, `Audio` 등 생성
+- `Bootstrap.unity`, `LoadingScene.unity`와 기본 Scene 흐름 구현
+- `BootstrapController`, `LoadingController`, `SceneSession`, `GameLog`, `SceneSetup` 구현
+- 이전 격리형 제작 경로를 제거하고 `_ReferenceTemp` 임시 참조 정책으로 전환
+- 원본 17,701개 파일의 전체 SHA-256 manifest 생성 및 원본 불변 확인
+- GUID/YAML 참조 감사 완료: 중복 GUID 0, 미해결 Scene/Prefab script 참조 0
+- Unity Editor에서 Bootstrap과 Loading Scene 저장·재로드 확인
 
-## 변경하지 않은 범위
+## 원본 현황
 
-- `ExportedProject/` 전체
-- `AuxiliaryFiles/` 전체
-- 원본 Scene/Prefab/ScriptableObject 및 `.meta`
-- 게임 기능과 에셋 연결
+- `ExportedProject/Assets`: 17,539개 파일, 약 16.75GB
+- 주요 수량: C# 362, Scene 15, Prefab 316, `.asset` 3,289, Material 1,121, Shader 272
+- `StreamingAssets/aa`: 약 5.3GB의 Windows Addressables 빌드 산출물 포함
+- 핵심 대상 `.meta`: `StateManager`, `FishGameManager`, `StageManager`, `DataManager`, `RodCont`, `TensionCont`
 
-## 다음 권장 작업
+## 다음 작업
 
-1. `tasks/01_originalArchive.md`: 전체 파일 manifest와 SHA-256 산출 방식을 결정하고 원본 보존 상태 확정
-2. `tasks/02_unityVersionValidation.md`: 62f3 설치 후 빈 새 프로젝트 호환성 검증(빌드는 별도 승인 필요)
-3. `tasks/03_assetInventory.md`: GUID/참조/Missing Script/Shader 누락 자동 조사
-4. 이후 `04_dllDeepAnalysis.md`와 Scene/Build inventory 작성
+1. 사용자가 Bootstrap Scene을 열어 화면과 Bootstrap → Loading → Bootstrap 흐름을 Play Mode에서 확인
+2. Loading Scene 직접/간접 asset closure와 패키지 경계를 확정
+3. 원본 Loading layout을 정상 경로에 필요한 자산만 가져와 복원
+4. Busan Gameplay Scene을 기준으로 공통 Gameplay 수직 조각 복원
+5. Result/Last와 Title을 순차 복원하고 최종 흐름을 연결
 
-## 차단/불확실성
+## 남은 불확실성
 
-- 원본이 실제로 마지막 실행된 Unity 버전은 아직 확정되지 않았다.
-- C# 소스가 원본 소스인지 DLL 역추출 결과인지 provenance 확인이 필요하다.
-- 16.75 GB 원본 전체 복제는 중복 저장 비용 때문에 아직 수행하지 않았다.
-- Unity를 실행하지 않아 컴파일, import, Missing Reference 상태는 검증되지 않았다.
+- 일부 C# 소스의 정확한 provenance
+- 해시형 Scene 12개의 원래 파일명 일부
+- 외부 Asset Store 패키지의 정확한 버전과 라이선스
+- Addressables catalog의 원본 주소/레이블 복원 가능 범위
+- 실제 하드웨어 기반 R5 검증 조건

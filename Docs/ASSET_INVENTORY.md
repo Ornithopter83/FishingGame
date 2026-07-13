@@ -55,12 +55,12 @@ Build Settings에 활성화된 Scene:
 | DAT-001 | `Assets/Resources`, `StreamingAssets` | Unknown | 데이터/설정 | P0 |
 | PLG-001 | `Assets/Plugins` | Unknown | 네이티브/서드파티 | P0 |
 
-## 아직 확인하지 않은 항목
+## R1 참조 감사 결과
 
-- YAML의 모든 GUID 참조와 실제 `.meta` GUID 대조
-- Missing Script 목록
-- Material → Shader 누락
-- Animator Controller → AnimationClip 누락
-- AudioMixer/AudioClip, TMP Font 참조
-- 중복 GUID와 path ID map 활용 가능성
+- 고유 GUID 8,651개, 중복 GUID 0개
+- YAML GUID 참조 73,209건 조사
+- Scene/Prefab script 참조 16,048건, 미해결 script 참조 0건
+- 해소되지 않은 고유 파일/GUID/property 조합 73건
+- 누락 Shader, Animator/Animation, Audio, TMP/Font 속성 후보 0건
 
+상세 결과는 `ASSET_REFERENCE_AUDIT.md`, 전체 inventory는 `ASSET_GUID_INVENTORY.csv`, Scene/Prefab script 참조는 `SCENE_PREFAB_SCRIPT_GUIDS.csv`를 참조한다.

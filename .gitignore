@@ -4,6 +4,11 @@
 /ExportedProject/
 /AuxiliaryFiles/
 
+# Temporary Unity-side reference copies. Keep only the policy file and folder metadata.
+/UnityProject/Assets/_ReferenceTemp/*
+!/UnityProject/Assets/_ReferenceTemp/README.md
+!/UnityProject/Assets/_ReferenceTemp/README.md.meta
+
 # Codex/local agent state
 /.agents/
 /.codex/
