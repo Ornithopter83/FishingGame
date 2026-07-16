@@ -12,8 +12,8 @@ EditorBuildSettings:
     path: Assets/Scenes/Loading/LoadingScene.unity
     guid: 1b6a5aaf2b988d54c82ac1c530aef755
   - enabled: 1
-    path: Assets/Scenes/Menu/LastScene.unity
-    guid: cf66978f1e77a9a4aa650edb0119c564
+    path: Assets/Scenes/Menu/SelectScene.unity
+    guid: 92789d60ba2bf6e4b9032e6bac32d01b
   - enabled: 1
     path: Assets/Scenes/Bootstrap/Bootstrap.unity
     guid: aaf1ead05613b504cab41e830fde43f6

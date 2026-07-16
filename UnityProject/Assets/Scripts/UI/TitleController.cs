@@ -5,8 +5,8 @@ namespace FishingGame.UI
 {
     /// <summary>
     /// PC adapter for the original Title card-wait state. The original flow enters
-    /// build index 2 through Loading after payment/card input; Enter, Space, or a
-    /// left click provides that input when cabinet hardware is unavailable.
+    /// the original Addressable SelectScene through Loading after payment/card input;
+    /// Enter, Space, or a left click provides that input without cabinet hardware.
     /// </summary>
     public sealed class TitleController : MonoBehaviour
     {
@@ -38,8 +38,8 @@ namespace FishingGame.UI
             }
 
             transitionStarted = true;
-            SceneSession.NextSceneName = SceneSession.ResultSceneName;
-            GameLog.Info("PC cabinet input accepted on Title; opening original build-index-2 flow through Loading.");
+            SceneSession.NextSceneName = SceneSession.SelectSceneName;
+            GameLog.Info("PC cabinet input accepted on Title; opening original SelectScene flow through Loading.");
             SceneManager.LoadScene(SceneSession.LoadingSceneName, LoadSceneMode.Single);
         }
     }

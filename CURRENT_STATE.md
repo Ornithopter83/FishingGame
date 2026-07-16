@@ -6,7 +6,7 @@
 
 - Phase 0 기초 정보와 원본 구조 조사 완료
 - Phase 1 기본 Scene 구조 완료
-- Phase 2 첫 묶음 `Loading`, `LastScene`, `Title`은 시각 복원 판정을 취소하고 재작업 상태
+- Phase 2 `Title` 복원 진행, Task 07 `Loading` 및 Task 08 `SelectScene` 원본 근거 기반 복원 완료
 - Unity 검증 버전: `2022.3.62f3`
 - 이번 작업에서 빌드, 스테이징, 커밋, 푸시는 수행하지 않음
 
@@ -24,14 +24,14 @@
 
 - 원본 구조 맵, DLL 분석, 자산 인벤토리 및 원본 SHA-256 manifest 작성
 - 원본 파일 무결성 기준: 17,701개, 16,783,310,435 bytes
-- 기본 제작 폴더와 `Bootstrap`, `Loading`, `LastScene`, `Title` Scene 구성
+- 기본 제작 폴더와 `Bootstrap`, `Loading`, `SelectScene`, `Title` Scene 구성
 - PC 전용 Scene 흐름과 하드웨어 없는 입력 adapter 구성
-- Loading/LastScene 기능 scaffold 구성. 시각 구성은 사용자 확인상 원본과 달라 재작업 대상
+- 원본 근거가 없던 `LastScene` 결과 scaffold와 임의 물고기명·등급·중량 데이터 제거
 - Title을 사용자 제공 화면과 원본 YAML/GUID를 기준으로 실제 오브젝트로 재복원
   - 광안대교 Mesh, 수면, 요트 2척, 크루즈선
   - 중앙/좌상단 로고, 동적 결제 안내, 배터리, 장력, 버전 UI
   - 원본 선박 경로 좌표 기반 이동
-  - Title BGM 및 `Title -> Loading -> LastScene` 흐름
+  - Title BGM 및 `Title -> Loading -> SelectScene` 흐름
 - 원본 Title 유휴 루프 발견 및 문서화
   - 30초 대기
   - 랭킹 스크롤
@@ -46,6 +46,21 @@
 - Crest 근거의 우측 방향 수면 요동을 커스텀 수면 셰이더에 1차 반영 (`Estimated`)
 - 전체 화면 참조 Sprite와 근거 없는 PC 메뉴/캐릭터 preview/button 제거
 - Title 선택 자산을 정상 경로로 채택하고 원본 `.meta` GUID 보존
+- Loading Scene 원본 근거 기반 복원
+  - 임의 로고·카드·진행 막대·안내 문구를 전부 제거
+  - 원본 `Canvas/back/subBack/SkeletonGraphic (loding)` 계층과 `bg_gameDiffi _2` 배경 복원
+  - 원본 Spine DLL, SkeletonData, Atlas, Texture, Material 및 `loding_x2` 복원
+  - `loding_x2` loop=true, timeScale=2와 중앙 물고기 회전을 Play Mode에서 확인
+  - 비동기 로드 0.89 도달 후 2초 유지 뒤 scene activation하는 원본 전환 순서 복원
+  - Export에서 소실된 SkeletonGraphic shader의 투명 UI pass만 `Reconstructed`로 복구
+  - 사용자 제공 실행 화면을 근거로 straight-alpha Atlas와 PMA 정점색 합성을 교정해 `LOADING...` 문자의 원본 밝기를 복원
+- 원본 Addressable 선택 Scene을 근거로 `SelectScene` 복원
+  - 결제 완료 PC adapter → LoadingScene → SelectScene 흐름 복원
+  - `precautionsBg3` 첫 주의 화면과 5초 제한, 좌·우 어느 입력으로든 스킵 복원
+  - `rod_controller` 두 번째 주의 화면과 10초 제한, 좌·우 어느 입력으로든 스킵 복원
+  - SINGLE/BATTLE 카드, 게임 모드 제목, 선택 테두리와 비선택 차단막의 원본 좌표 복원
+  - 초기 SINGLE 선택, 왼쪽 이동 입력 토글, 오른쪽 선택 입력 확정 복원
+  - 다음 레벨 선택 및 BATTLE 네트워크 매칭은 근거 범위 분리를 위해 비활성·미구현 유지
 
 ## Title 검증 상태
 
@@ -56,10 +71,32 @@
   - 결제 안내와 장력 Text 런타임 변경
   - 선박 Transform 이동
   - 단축 검증 모드로 랭킹 → 안내 이미지 2장 → 영상 → Title 복귀 1회 완료
-  - `Title -> Loading -> LastScene -> Loading -> Title`
+  - 이 기록의 이전 `LastScene` 흐름은 Task 08에서 폐기되었으며 현재 진입 대상은 `SelectScene`
 - 빌드는 수행하지 않았다.
 - 위 검증은 현재 scaffold가 실행된다는 뜻이며 원본 시각·전체 동작 복원 완료를 뜻하지 않는다.
 - Title 유휴 루프는 원본 코드/Scene 근거 범위에서 구현되었으나 실제 30초 전체 시간과 외부 영상 파일은 수동 장시간 검증이 남아 있다.
+
+## Loading 검증 상태
+
+- Scene/compile 검증 통과: `UnityProject/Logs/Task07StaticValidationFinal.log`
+- Play Mode Spine 회전 및 GPU 렌더 검증 통과: `UnityProject/Logs/Task07LoadingPlayModeFinal.log`
+- 실제 GPU 1920×1080 캡처: `UnityProject/Logs/LoadingOriginalRender.png`
+- 사용자 화면 기반 PMA 글자 밝기 교정 검증 통과: `UnityProject/Logs/Task07LoadingPmaCorrection.log`
+- 전체 PC Scene 흐름 검증 통과: `UnityProject/Logs/Task07FullSceneFlow.log`
+  - 당시 scaffold 기준 기록이며 Task 08에서 `Title -> Loading -> SelectScene`으로 교체됨
+- 빌드는 수행하지 않았다.
+
+## SelectScene 검증 상태
+
+- Scene/import/compile 정적 검증 통과: `UnityProject/Logs/Task08SceneCreateFinal.log`
+- 전체 Play Mode 흐름 검증 통과: `UnityProject/Logs/Task08PlayModeVisualGpu.log`
+  - `Title -> Loading -> warning 1 -> warning 2 -> mode selection`
+  - 두 주의 화면 스킵, SINGLE/BATTLE 선택 좌표 교대, 선택 확정 확인
+- 실제 GPU 1920×1080 캡처:
+  - `UnityProject/Logs/Task08WarningPage1.png`
+  - `UnityProject/Logs/Task08WarningPage2.png`
+  - `UnityProject/Logs/Task08ModeSelect.png`
+- 빌드는 수행하지 않았다.
 
 ## 현재 한계
 
@@ -70,12 +107,15 @@
 - Crest 원본의 우측 방향 파동을 1차 반영했지만 FFT, foam, 실제 Crest 수면과 동일하다고 볼 수 없음
 - 랭킹 수량은 사용자 확인과 export 근거가 일치하는 30개로 확정
 - 실제 Serial, 카드 단말기, IMU, 모터 장치 미검증
-- Loading의 Spine animation과 LastScene의 실제 결과 데이터는 `Placeholder`
+- Loading의 원본 Serial/Addressables backend와 전역 Loading BGM 호출은 미복원·미검증
+- Export에서 원본 SkeletonGraphic shader 본문이 소실되어 투명 UI pass는 `Reconstructed`; 원본과 픽셀 단위 동일성은 미확정
+- 원본 TMP 재질 대신 SCDream5 기반 UI Text adapter를 사용하므로 글자 외곽선은 픽셀 단위 동일하지 않을 수 있음
+- SINGLE 다음 레벨 선택 Scene과 BATTLE 네트워크 매칭 백엔드는 Task 08 범위 밖으로 미구현
 
 ## 다음 작업
 
 1. Title 수면의 우측 방향 파동을 작은 단계로 보정하고 사용자 비교를 받는다.
 2. Unity에서 정상 30초 대기와 전체 랭킹 스크롤, 안내 이미지, 내장/외부 영상 재생을 수동 확인한다.
 3. 결제 입력 발생 시 유휴 루프를 중단하고 결제 흐름을 우선하는 원본 조건을 추가 조사한다.
-4. Loading과 LastScene은 원본 화면 근거가 확보된 요소만 다시 구성한다.
-5. Task 06이 확정된 뒤 07번 범위를 논의한다.
+4. Task 07 Loading의 최종 PMA 밝기 교정 화면을 Unity Game View에서 사용자 확인한다.
+5. 다음 작업은 SINGLE 확정 후 원본 레벨 선택 상태와 관련 Addressable Scene을 조사한다.

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using FishingGame.UI;
+using Spine.Unity;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -18,7 +19,7 @@ namespace FishingGame.Editor
     {
         private const string BootstrapPath = "Assets/Scenes/Bootstrap/Bootstrap.unity";
         private const string LoadingPath = "Assets/Scenes/Loading/LoadingScene.unity";
-        private const string ResultPath = "Assets/Scenes/Menu/LastScene.unity";
+        private const string SelectPath = "Assets/Scenes/Menu/SelectScene.unity";
         private const string TitlePath = "Assets/Scenes/Menu/Title.unity";
         private const string OldLoadingPath = "Assets/Scenes/Bootstrap/LoadingScene.unity";
         private const string UiRoot = "Assets/Art/UI/Source/";
@@ -33,19 +34,22 @@ namespace FishingGame.Editor
         private const string TitleVideoRoot = "Assets/Video/Title/";
         private const string TitleAudioRoot = "Assets/Audio/Title/";
         private const string FontRoot = "Assets/Art/Fonts/";
+        private const string LoadingArtRoot = "Assets/Art/Loading/";
+        private const string LoadingSpineRoot = LoadingArtRoot + "Spine/";
+        private const string SelectionArtRoot = "Assets/Art/Selection/";
 
         [MenuItem("Fishing Game/Create Restored PC Scenes")]
         public static void CreateScenes()
         {
             EnsureDirectory(Path.GetDirectoryName(BootstrapPath));
             EnsureDirectory(Path.GetDirectoryName(LoadingPath));
-            EnsureDirectory(Path.GetDirectoryName(ResultPath));
+            EnsureDirectory(Path.GetDirectoryName(SelectPath));
             AssetDatabase.Refresh();
             PrepareScenePaths();
 
             CreateBootstrapScene();
             CreateLoadingScene();
-            CreateResultScene();
+            CreateSelectScene();
             CreateTitleScene();
 
             AssetDatabase.SaveAssets();
@@ -53,18 +57,19 @@ namespace FishingGame.Editor
             UpdateBuildSettings();
             AssetDatabase.SaveAssets();
             ValidateScenes();
-            Debug.Log("[FishingGame] Loading, Result, and Title PC scenes created.");
+            Debug.Log("[FishingGame] Loading, Select, and Title PC scenes created.");
         }
 
         public static void ValidateScenes()
         {
             ValidateScene<BootstrapController>(BootstrapPath);
             ValidateScene<LoadingController>(LoadingPath);
-            ValidateScene<ResultController>(ResultPath);
+            ValidateOriginalLoading();
+            ValidateScene<SelectSceneController>(SelectPath);
             ValidateScene<TitleController>(TitlePath);
             ValidateReferenceTitle();
 
-            string[] required = { TitlePath, LoadingPath, ResultPath, BootstrapPath };
+            string[] required = { TitlePath, LoadingPath, SelectPath, BootstrapPath };
             string[] enabledPaths = EditorBuildSettings.scenes
                 .Where(scene => scene.enabled)
                 .Select(scene => scene.path)
@@ -74,7 +79,7 @@ namespace FishingGame.Editor
                 throw new InvalidOperationException("A restored Scene is missing from Build Settings.");
             }
 
-            Debug.Log("[FishingGame] Scene validation passed: Bootstrap, Loading, LastScene, Title.");
+            Debug.Log("[FishingGame] Scene validation passed: Bootstrap, Loading, SelectScene, Title.");
         }
 
         private static void ValidateReferenceTitle()
@@ -137,6 +142,40 @@ namespace FishingGame.Editor
             }
         }
 
+        private static void ValidateOriginalLoading()
+        {
+            string[] removedPlaceholders =
+            {
+                "OriginalBackground", "CinematicTint", "FishingFamilyLogo", "LoadingCard",
+                "StatusText", "LoadingDots", "ProgressBack", "ProgressFill", "PcModeNote"
+            };
+            if (removedPlaceholders.Any(name => GameObject.Find(name) != null))
+            {
+                throw new InvalidOperationException("An invented Loading placeholder is still present.");
+            }
+
+            SkeletonGraphic graphic = UnityEngine.Object.FindObjectOfType<SkeletonGraphic>();
+            LoadingController controller = UnityEngine.Object.FindObjectOfType<LoadingController>();
+            SerializedProperty holdSeconds = controller == null
+                ? null
+                : new SerializedObject(controller).FindProperty("minimumDisplaySeconds");
+            if (GameObject.Find("back") == null || GameObject.Find("subBack") == null ||
+                controller == null || controller.name != "loadingManager" || holdSeconds == null ||
+                !Mathf.Approximately(holdSeconds.floatValue, 2f) ||
+                graphic == null || graphic.name != "SkeletonGraphic (loding)" || graphic.skeletonDataAsset == null ||
+                graphic.startingAnimation != "loding_x2" || !graphic.startingLoop ||
+                !Mathf.Approximately(graphic.timeScale, 2f))
+            {
+                throw new InvalidOperationException("The original Loading Spine animation was not restored.");
+            }
+
+            RectTransform rect = graphic.rectTransform;
+            if (Vector2.Distance(rect.sizeDelta, new Vector2(586.10004f, 633.6256f)) > 0.01f)
+            {
+                throw new InvalidOperationException("The original Loading SkeletonGraphic layout was not restored.");
+            }
+        }
+
         private static void ValidateScene<T>(string path) where T : Component
         {
             EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
@@ -184,81 +223,156 @@ namespace FishingGame.Editor
         private static void CreateLoadingScene()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            CreateCamera(new Color(0.02f, 0.035f, 0.065f));
+            Camera camera = CreateOriginalLoadingCamera();
             Canvas canvas = CreateCanvas();
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = camera;
+            canvas.planeDistance = 0.4f;
+            canvas.pixelPerfect = true;
+            canvas.vertexColorAlwaysGammaSpace = true;
+            canvas.additionalShaderChannels = AdditionalCanvasShaderChannels.TexCoord1 |
+                                              AdditionalCanvasShaderChannels.Normal |
+                                              AdditionalCanvasShaderChannels.Tangent;
+            CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            scaler.referencePixelsPerUnit = 100f;
+            scaler.referenceResolution = new Vector2(800f, 600f);
+            scaler.matchWidthOrHeight = 0f;
 
-            CreateFullImage("OriginalBackground", canvas.transform, SpriteAt("bg_gameDiffi _2.png"), Color.white);
-            CreateFullImage("CinematicTint", canvas.transform, null, new Color(0.02f, 0.04f, 0.14f, 0.30f));
-            CreateImage("FishingFamilyLogo", canvas.transform, SpriteAt("intro-fishing-family-logo.png"),
-                new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, new Vector2(980f, 190f), Color.white, true);
+            Image back = CreateFullImage("back", canvas.transform, null,
+                new Color(0.3773585f, 0.3773585f, 0.3773585f, 1f));
+            CreateFullImage("subBack", back.transform, LoadingBackgroundSprite(), Color.white);
+            CreateOriginalLoadingSkeleton(back.transform);
 
-            Image card = CreateImage("LoadingCard", canvas.transform, null,
-                new Vector2(0.5f, 0.24f), new Vector2(0.5f, 0.24f), Vector2.zero, new Vector2(760f, 210f),
-                new Color(0.015f, 0.05f, 0.16f, 0.82f), false);
-            AddOutline(card.gameObject, new Color(0.2f, 0.85f, 1f, 0.75f), new Vector2(3f, -3f));
-            CreateText("StatusText", card.transform, "PC MODE  •  LOADING", 34, FontStyle.Bold,
-                TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.67f), new Vector2(0.5f, 0.67f), Vector2.zero, new Vector2(680f, 52f));
-            CreateText("LoadingDots", card.transform, "•••", 42, FontStyle.Bold,
-                TextAnchor.MiddleCenter, new Color(0.25f, 0.9f, 1f), new Vector2(0.5f, 0.40f), new Vector2(0.5f, 0.40f), Vector2.zero, new Vector2(220f, 52f));
+            GameObject manager = new GameObject("loadingManager");
+            manager.transform.position = new Vector3(1820f, 100f, 0f);
+            manager.AddComponent<LoadingController>();
 
-            Image progressBack = CreateImage("ProgressBack", card.transform, null,
-                new Vector2(0.5f, 0.17f), new Vector2(0.5f, 0.17f), Vector2.zero, new Vector2(610f, 16f),
-                new Color(0.1f, 0.18f, 0.3f, 1f), false);
-            Image fill = CreateImage("ProgressFill", progressBack.transform, null,
-                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0.15f, 0.85f, 1f, 1f), false);
-            fill.type = Image.Type.Filled;
-            fill.fillMethod = Image.FillMethod.Horizontal;
-            fill.fillOrigin = 0;
-            fill.fillAmount = 0f;
-
-            CreateText("PcModeNote", canvas.transform, "HARDWARE CONNECTION IS NOT REQUIRED",
-                20, FontStyle.Normal, TextAnchor.MiddleCenter, new Color(0.82f, 0.92f, 1f, 0.92f),
-                new Vector2(0.5f, 0.075f), new Vector2(0.5f, 0.075f), Vector2.zero, new Vector2(720f, 38f));
-
-            new GameObject("LoadingController").AddComponent<LoadingController>();
+            canvas.transform.SetSiblingIndex(0);
+            manager.transform.SetSiblingIndex(1);
+            camera.transform.SetSiblingIndex(2);
+            GameObject.Find("EventSystem")?.transform.SetSiblingIndex(3);
             EditorSceneManager.SaveScene(scene, LoadingPath);
         }
 
-        private static void CreateResultScene()
+        private static Camera CreateOriginalLoadingCamera()
+        {
+            var cameraObject = new GameObject("Main Camera");
+            cameraObject.tag = "MainCamera";
+            cameraObject.transform.position = new Vector3(0f, 1f, -10f);
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.clearFlags = CameraClearFlags.Skybox;
+            camera.backgroundColor = Color.black;
+            camera.fieldOfView = 60f;
+            camera.nearClipPlane = 0.3f;
+            camera.farClipPlane = 1000f;
+            camera.depth = -1f;
+            cameraObject.AddComponent<AudioListener>();
+            return camera;
+        }
+
+        private static void CreateOriginalLoadingSkeleton(Transform parent)
+        {
+            var skeletonObject = new GameObject("SkeletonGraphic (loding)", typeof(RectTransform));
+            skeletonObject.transform.SetParent(parent, false);
+            RectTransform rect = skeletonObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(586.10004f, 633.6256f);
+            rect.pivot = new Vector2(0.4979526f, 0.46096623f);
+
+            SkeletonGraphic graphic = skeletonObject.AddComponent<SkeletonGraphic>();
+            graphic.raycastTarget = false;
+            graphic.maskable = false;
+            graphic.material = LoadingMaterialAt("SkeletonGraphicDefault-Straight.mat");
+            graphic.skeletonDataAsset = LoadingSkeletonData();
+            graphic.additiveMaterial = LoadingMaterialAt("SkeletonGraphicAdditive.mat");
+            graphic.multiplyMaterial = LoadingMaterialAt("SkeletonGraphicMultiply.mat");
+            graphic.screenMaterial = LoadingMaterialAt("SkeletonGraphicScreen.mat");
+            graphic.initialSkinName = "default";
+            graphic.startingAnimation = "loding_x2";
+            graphic.startingLoop = true;
+            graphic.timeScale = 2f;
+        }
+
+        private static void CreateSelectScene()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            CreateCamera(new Color(0.015f, 0.03f, 0.08f));
+            CreateCamera(Color.black);
             Canvas canvas = CreateCanvas();
-            CreateFullImage("OceanBackground", canvas.transform, SpriteAt("bg_gameDiffi _2.png"), Color.white);
-            CreateFullImage("ResultTint", canvas.transform, null, new Color(0.01f, 0.025f, 0.10f, 0.52f));
 
-            CreateImage("HeaderGradient", canvas.transform, SpriteAt("ui_questbg.png"),
-                new Vector2(0.5f, 0.90f), new Vector2(0.5f, 0.90f), Vector2.zero, new Vector2(1240f, 116f), Color.white, false);
-            CreateText("ResultTitle", canvas.transform, "FISHING RESULT", 58, FontStyle.Bold, TextAnchor.MiddleCenter,
-                Color.white, new Vector2(0.5f, 0.90f), new Vector2(0.5f, 0.90f), Vector2.zero, new Vector2(900f, 80f));
+            Sprite safety = SelectionSpriteAt("Warning/precautionsBg3.asset");
+            Sprite controls = SelectionSpriteAt("Warning/rod_controller.asset");
+            Image warning = CreateFullImage("Warning", canvas.transform, safety, Color.white);
+            var firstPageTexts = new GameObject("FirstPageTexts", typeof(RectTransform));
+            firstPageTexts.transform.SetParent(warning.transform, false);
+            Stretch(firstPageTexts.GetComponent<RectTransform>());
 
-            Image card = CreateImage("FishResultCard", canvas.transform, SpriteAt("ui_ques2StarBg.png"),
-                new Vector2(0.5f, 0.51f), new Vector2(0.5f, 0.51f), Vector2.zero, new Vector2(1050f, 520f), Color.white, false);
-            CreateImage("FishBox", card.transform, SpriteAt("ui_record_fishBoxO.png"),
-                new Vector2(0.28f, 0.53f), new Vector2(0.28f, 0.53f), Vector2.zero, new Vector2(370f, 285f), Color.white, false);
-            CreateText("FishSilhouette", card.transform, "◢  FISH  ◣", 46, FontStyle.Bold, TextAnchor.MiddleCenter,
-                new Color(0.45f, 0.92f, 1f), new Vector2(0.28f, 0.54f), new Vector2(0.28f, 0.54f), Vector2.zero, new Vector2(320f, 90f));
+            CreateSelectText("Text", firstPageTexts.transform, "주의사항", 70, TextAnchor.MiddleCenter, Color.red,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 126f), new Vector2(360.3f, 86.9f));
+            Text warningText = CreateSelectText("Text (1)", firstPageTexts.transform,
+                "낚싯대를 휘두르거나 무리하게 당기면\n기기 파손으로 인해 다칠 수 있습니다.", 47,
+                TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.404f),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -19f), new Vector2(798.2f, 121.8f));
+            CreateSelectText("Text (2)", firstPageTexts.transform,
+                "※이용자의 무리한 게임 동작으로 인해 발생한 사고에 대한 \n    책임은 본인에게 있음을 알려드립니다.", 33,
+                TextAnchor.MiddleLeft, Color.white,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(8.3f, -178.2f), new Vector2(771.5f, 111.1f));
 
-            CreateText("FishNameText", card.transform, "BLUEFIN TUNA", 42, FontStyle.Bold, TextAnchor.MiddleLeft,
-                Color.white, new Vector2(0.53f, 0.72f), new Vector2(0.53f, 0.72f), Vector2.zero, new Vector2(390f, 62f));
-            CreateText("RankLabel", card.transform, "RANK", 25, FontStyle.Bold, TextAnchor.MiddleLeft,
-                new Color(0.55f, 0.82f, 1f), new Vector2(0.53f, 0.53f), new Vector2(0.53f, 0.53f), Vector2.zero, new Vector2(180f, 44f));
-            CreateText("RankValueText", card.transform, "S", 82, FontStyle.Bold, TextAnchor.MiddleCenter,
-                new Color(1f, 0.82f, 0.18f), new Vector2(0.79f, 0.53f), new Vector2(0.79f, 0.53f), Vector2.zero, new Vector2(170f, 100f));
-            CreateText("WeightLabel", card.transform, "WEIGHT", 25, FontStyle.Bold, TextAnchor.MiddleLeft,
-                new Color(0.55f, 0.82f, 1f), new Vector2(0.53f, 0.34f), new Vector2(0.53f, 0.34f), Vector2.zero, new Vector2(180f, 44f));
-            CreateText("WeightValueText", card.transform, "128.4 kg", 45, FontStyle.Bold, TextAnchor.MiddleCenter,
-                Color.white, new Vector2(0.78f, 0.34f), new Vector2(0.78f, 0.34f), Vector2.zero, new Vector2(250f, 66f));
+            var bottom = new GameObject("GameObject", typeof(RectTransform));
+            bottom.transform.SetParent(warning.transform, false);
+            RectTransform bottomRect = bottom.GetComponent<RectTransform>();
+            bottomRect.anchorMin = new Vector2(0.5f, 0f);
+            bottomRect.anchorMax = new Vector2(0.5f, 0f);
+            bottomRect.anchoredPosition = new Vector2(0f, -21.2f);
+            bottomRect.sizeDelta = new Vector2(983.3f, 100f);
+            CreateSelectText("Text", bottom.transform, "<          또는          버튼을 눌러 다음 페이지로 가기 >", 40,
+                TextAnchor.MiddleCenter, Color.white, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            CreateImage("btn_l", bottom.transform, SpriteAt("btn_l.png"),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-330f, 0f), new Vector2(64f, 64f), Color.white, true);
+            CreateImage("btn_r", bottom.transform, SpriteAt("btn_r.png"),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-180f, 0f), new Vector2(64f, 64f), Color.white, true);
 
-            CreateSpriteButton("PreviousButton", canvas.transform, SpriteAt("btn_l.png"), "A / ←",
-                new Vector2(0.15f, 0.18f), new Vector2(150f, 150f));
-            CreateSpriteButton("NextButton", canvas.transform, SpriteAt("btn_r.png"), "D / →",
-                new Vector2(0.85f, 0.18f), new Vector2(150f, 150f));
-            CreateButton("ReturnButton", canvas.transform, "RETURN TO TITLE  [ENTER]", new Vector2(0.5f, 0.11f), new Vector2(470f, 74f));
+            var modeRoot = new GameObject("ModeSelect", typeof(RectTransform));
+            modeRoot.transform.SetParent(canvas.transform, false);
+            Stretch(modeRoot.GetComponent<RectTransform>());
+            CreateFullImage("bg", modeRoot.transform, LoadingBackgroundSprite(), Color.white);
+            Image heading = CreateImage("LV_bg(1)", modeRoot.transform, SelectionSpriteAt("Mode/ui_diffiBox.asset"),
+                new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(0f, 455f), new Vector2(0f, 150f), Color.white, false);
+            CreateSelectText("Lv_text", heading.transform, "게임 모드", 80, TextAnchor.MiddleCenter, Color.white,
+                new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), Vector2.zero, new Vector2(0f, 50f));
 
-            AddLoopingAudio("Result BGM", AudioAt("Cave_02.ogg"), 0.28f);
-            new GameObject("ResultController").AddComponent<ResultController>();
-            EditorSceneManager.SaveScene(scene, ResultPath);
+            CreateImage("mode_single", modeRoot.transform, SelectionSpriteAt("Mode/singelMod.asset"),
+                new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(345f, -25f), new Vector2(505f, 772f), Color.white, false)
+                .rectTransform.pivot = new Vector2(0f, 0.5f);
+            CreateImage("mode_multi", modeRoot.transform, SelectionSpriteAt("Mode/battleMod.asset"),
+                new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-345f, -25f), new Vector2(505f, 772f), Color.white, false)
+                .rectTransform.pivot = new Vector2(1f, 0.5f);
+            Image outline = CreateImage("select_outline(1)", modeRoot.transform, SelectionSpriteAt("Mode/border_0.asset"),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-364f, -28f), new Vector2(505f, 793.3f), Color.white, false);
+            outline.rectTransform.localScale = new Vector3(1f, 1.01f, 1f);
+            Image block = CreateImage("block", modeRoot.transform, null,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(362f, -25f), new Vector2(505f, 772f),
+                new Color(0f, 0f, 0f, 0.807843f), false);
+            Text readyText = CreateSelectText("Text", block.transform, "준비중", 50, TextAnchor.MiddleCenter, Color.white,
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            readyText.gameObject.SetActive(false);
+
+            Image leftButton = CreateImage("lbtn(1)", modeRoot.transform, SpriteAt("btn_l.png"),
+                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-110f, 20f), new Vector2(100f, 100f), Color.white, true);
+            CreateSelectText("Text", leftButton.transform, "이동", 38, TextAnchor.MiddleCenter, Color.white,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-99f, 0f), new Vector2(94.3f, 50f));
+            Image rightButton = CreateImage("rbtn(1)", modeRoot.transform, SpriteAt("btn_r.png"),
+                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(110f, 20f), new Vector2(100f, 100f), Color.white, true);
+            CreateSelectText("Text", rightButton.transform, "선택", 38, TextAnchor.MiddleCenter, Color.white,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(99f, 0f), new Vector2(94.3f, 50f));
+
+            modeRoot.SetActive(false);
+            SelectSceneController controller = new GameObject("SelectSceneManager").AddComponent<SelectSceneController>();
+            controller.Configure(warning.gameObject, warning, firstPageTexts, warningText, modeRoot,
+                outline.rectTransform, block.rectTransform, safety, controls);
+            EditorSceneManager.SaveScene(scene, SelectPath);
         }
 
         private static void CreateTitleScene()
@@ -801,6 +915,38 @@ namespace FishingGame.Editor
             return font;
         }
 
+        private static Sprite LoadingBackgroundSprite()
+        {
+            const string path = LoadingArtRoot + "Background/bg_gameDiffi _2.asset";
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                throw new InvalidOperationException("Original Loading background Sprite was not imported.");
+            }
+            return sprite;
+        }
+
+        private static SkeletonDataAsset LoadingSkeletonData()
+        {
+            const string path = LoadingSpineRoot + "Data/loading_SkeletonData.asset";
+            SkeletonDataAsset data = AssetDatabase.LoadAssetAtPath<SkeletonDataAsset>(path);
+            if (data == null)
+            {
+                throw new InvalidOperationException("Original Loading SkeletonData was not imported.");
+            }
+            return data;
+        }
+
+        private static Material LoadingMaterialAt(string fileName)
+        {
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(LoadingSpineRoot + "Materials/" + fileName);
+            if (material == null)
+            {
+                throw new InvalidOperationException("Original Loading Spine material was not imported: " + fileName);
+            }
+            return material;
+        }
+
         private static Canvas CreateCanvas()
         {
             var canvasObject = new GameObject("Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -872,6 +1018,20 @@ namespace FishingGame.Editor
             return text;
         }
 
+        private static Text CreateSelectText(string name, Transform parent, string value, int fontSize,
+            TextAnchor alignment, Color color, Vector2 anchorMin, Vector2 anchorMax, Vector2 position, Vector2 size)
+        {
+            Text text = CreateText(name, parent, value, fontSize, FontStyle.Normal, alignment, color,
+                anchorMin, anchorMax, position, size);
+            Font originalFont = AssetDatabase.LoadAssetAtPath<Font>(FontRoot + "SCDream5.otf");
+            if (originalFont == null)
+            {
+                throw new InvalidOperationException("Original SCDream5 font was not imported.");
+            }
+            text.font = originalFont;
+            return text;
+        }
+
         private static Button CreateButton(string name, Transform parent, string label, Vector2 anchor, Vector2 size)
         {
             var target = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
@@ -935,6 +1095,16 @@ namespace FishingGame.Editor
             return sprite;
         }
 
+        private static Sprite SelectionSpriteAt(string relativePath)
+        {
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(SelectionArtRoot + relativePath);
+            if (sprite == null)
+            {
+                throw new InvalidOperationException("Original SelectScene Sprite was not imported: " + relativePath);
+            }
+            return sprite;
+        }
+
         private static AudioClip AudioAt(string fileName)
         {
             AudioClip clip = AssetDatabase.LoadAssetAtPath<AudioClip>(AudioRoot + fileName);
@@ -957,9 +1127,10 @@ namespace FishingGame.Editor
 
         private static void UpdateBuildSettings()
         {
-            string[] scenePaths = { TitlePath, LoadingPath, ResultPath, BootstrapPath };
+            string[] scenePaths = { TitlePath, LoadingPath, SelectPath, BootstrapPath };
             var scenes = scenePaths.Select(CreateBuildSettingsScene).ToList();
-            scenes.AddRange(EditorBuildSettings.scenes.Where(scene => !scenePaths.Contains(scene.path)));
+            scenes.AddRange(EditorBuildSettings.scenes.Where(scene =>
+                !scenePaths.Contains(scene.path) && scene.path != "Assets/Scenes/Menu/LastScene.unity"));
             EditorBuildSettings.scenes = scenes.ToArray();
         }
 

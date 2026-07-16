@@ -64,3 +64,17 @@ Build Settings에 활성화된 Scene:
 - 누락 Shader, Animator/Animation, Audio, TMP/Font 속성 후보 0건
 
 상세 결과는 `ASSET_REFERENCE_AUDIT.md`, 전체 inventory는 `ASSET_GUID_INVENTORY.csv`, Scene/Prefab script 참조는 `SCENE_PREFAB_SCRIPT_GUIDS.csv`를 참조한다.
+
+## Task 08 선택 Scene 채택 자산
+
+| 용도 | 원본 | 채택 경로 | 상태 |
+|---|---|---|---|
+| 주의사항 1 | `Sprite/precautionsBg3.asset`, `Texture2D/precautionsBg3.png` | `Assets/Art/Selection/Warning/` | Original, GUID 보존 |
+| 주의사항 2 | `Sprite/rod_controller.asset`, `Texture2D/rod_controller.png` | `Assets/Art/Selection/Warning/` | Original, GUID 보존 |
+| 모드 제목 상자 | `Sprite/ui_diffiBox.asset`, `Texture2D/ui_diffiBox.png` | `Assets/Art/Selection/Mode/` | Original, GUID 보존 |
+| SINGLE 카드 | `Sprite/singelMod.asset`, `Texture2D/singelMod.png` | `Assets/Art/Selection/Mode/` | Original, GUID 보존 |
+| BATTLE 카드 | `Sprite/battleMod.asset`, `Texture2D/battleMod.png` | `Assets/Art/Selection/Mode/` | Original, GUID 보존 |
+| 선택 테두리 | `border_0.asset`, `border_0.png` | `Assets/Art/Selection/Mode/` | Original, GUID 보존 |
+
+- 배경 `bg_gameDiffi _2`, 입력 아이콘 `btn_l`, `btn_r`, 폰트 `SCDream5`는 앞선 작업에서 채택한 동일 원본 자산을 재사용했다.
+- 원본 증거 Scene은 `ExportedProject/Assets/776bde1206771494880c13770e84312e.unity`이며 수정하지 않았다.
