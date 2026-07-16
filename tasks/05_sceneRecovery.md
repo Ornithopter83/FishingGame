@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 기반 준비 완료, Scene별 후속 복원 진행 예정
+- 완료 — Scene 분류와 기본 진입 구조를 06번 작업으로 인계
 
 ## 목표
 
@@ -102,6 +102,7 @@
 - Unity `2022.3.62f3` batch compile 및 Scene component 검증 성공
 - Unity Editor가 두 Scene을 실제로 열고 필수 컴포넌트를 찾는 검증 성공
 - 이전 격리형 배치 정책을 폐기하고 `_ReferenceTemp`를 임시 참조 전용으로 지정
+- 실제 디자인·기능 보강과 PC/Serial 실행 분리는 `tasks/06_sceneDetailRestoration.md`로 인계
 
 ## 위험과 되돌리기
 

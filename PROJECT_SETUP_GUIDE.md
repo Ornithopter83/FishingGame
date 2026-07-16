@@ -44,6 +44,14 @@ UnityProject/Assets/
 
 Windows 빌드는 별도 요청 전까지 수행하지 않는다.
 
+## Scene 화면 구성 정책
+
+- 새 Unity Scene을 만드는 것은 원본 화면을 새로 디자인하는 작업이 아니다.
+- 원본 YAML/GUID, 코드/DLL, 실행 이미지·영상 또는 사용자 확인으로 입증된 요소만 배치한다.
+- 증거가 없는 UI와 버튼, 장식, 배경, 캐릭터, 결과 데이터 및 전환 효과를 편의상 추가하지 않는다.
+- 누락된 패키지나 자산이 있으면 임의 대체 화면을 만들지 않고 `미구현`으로 남긴다. 대체 구현은 사용자 승인 후 별도 범위로 진행한다.
+- Scene 작업 전 task 문서에 `확정 근거`, `미확정`, `구현 금지`를 나눠 기록한다.
+
 ## 권장 Assembly Definition
 
 초기 기능이 안정된 뒤 필요에 따라 다음 경계로 분리한다.
@@ -55,4 +63,3 @@ Windows 빌드는 별도 요청 전까지 수행하지 않는다.
 - `FishingGame.Editor`
 - `FishingGame.Tests.EditMode`
 - `FishingGame.Tests.PlayMode`
-

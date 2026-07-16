@@ -1,37 +1,64 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace FishingGame
 {
     /// <summary>
-    /// Hardware-independent loading flow. Original visuals and manager
-    /// integrations are connected later without changing the scene contract.
+    /// PC-safe loading flow. Visuals are reconstructed from the original Loading Scene,
+    /// while Serial and Addressables remain optional backends.
     /// </summary>
     public sealed class LoadingController : MonoBehaviour
     {
         [SerializeField, Min(0f)]
-        private float minimumDisplaySeconds = 1f;
+        private float minimumDisplaySeconds = 1.8f;
 
-        private string status = "Preparing...";
+        private Text statusLabel;
+        private Text dotsLabel;
+        private Image progressFill;
+        private string status = "PREPARING";
         private float progress;
+
+        private void Awake()
+        {
+            statusLabel = FindComponent<Text>("StatusText");
+            dotsLabel = FindComponent<Text>("LoadingDots");
+            progressFill = FindComponent<Image>("ProgressFill");
+        }
 
         private void Start()
         {
             StartCoroutine(ContinueFlow());
         }
 
+        private void Update()
+        {
+            if (statusLabel != null)
+            {
+                statusLabel.text = status;
+            }
+
+            if (dotsLabel != null)
+            {
+                int count = 1 + Mathf.FloorToInt(Time.unscaledTime * 2f) % 3;
+                dotsLabel.text = new string('•', count);
+            }
+
+            if (progressFill != null)
+            {
+                progressFill.fillAmount = progress;
+            }
+        }
+
         private void OnGUI()
         {
-            const float width = 460f;
-            const float height = 180f;
-            Rect panel = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.5f, width, height);
+            if (statusLabel != null)
+            {
+                return;
+            }
 
-            GUI.Box(panel, "Loading");
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 46f, width - 48f, 24f), status);
-            GUI.HorizontalSlider(new Rect(panel.x + 24f, panel.y + 84f, width - 48f, 24f), progress, 0f, 1f);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 116f, width - 48f, 24f),
-                "Spine / Serial / Addressables integrations are not connected yet.");
+            GUI.Label(new Rect(24f, 24f, 500f, 30f), status);
         }
 
         private IEnumerator ContinueFlow()
@@ -39,10 +66,10 @@ namespace FishingGame
             string target = SceneSession.NextSceneName;
             if (string.IsNullOrWhiteSpace(target) || target == SceneSession.LoadingSceneName)
             {
-                target = SceneSession.BootstrapSceneName;
+                target = SceneSession.TitleSceneName;
             }
 
-            status = "Safe loading delay...";
+            status = "PC MODE  •  LOADING";
             float elapsed = 0f;
             while (elapsed < minimumDisplaySeconds)
             {
@@ -51,14 +78,14 @@ namespace FishingGame
                 yield return null;
             }
 
-            status = "Opening " + target + "...";
+            status = "OPENING  " + target.ToUpperInvariant();
             progress = 1f;
-            GameLog.Info("Loading scene: " + target);
+            GameLog.Info("Loading scene in PC mode: " + target);
 
             AsyncOperation operation = SceneManager.LoadSceneAsync(target, LoadSceneMode.Single);
             if (operation == null)
             {
-                status = "Failed to open " + target;
+                status = "FAILED TO OPEN  " + target.ToUpperInvariant();
                 GameLog.Error(status);
                 yield break;
             }
@@ -68,6 +95,11 @@ namespace FishingGame
                 yield return null;
             }
         }
+
+        private static T FindComponent<T>(string objectName) where T : Component
+        {
+            GameObject target = GameObject.Find(objectName);
+            return target == null ? null : target.GetComponent<T>();
+        }
     }
 }
-

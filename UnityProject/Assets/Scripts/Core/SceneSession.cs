@@ -7,6 +7,8 @@ namespace FishingGame
     {
         public const string BootstrapSceneName = "Bootstrap";
         public const string LoadingSceneName = "LoadingScene";
+        public const string TitleSceneName = "Title";
+        public const string ResultSceneName = "LastScene";
 
         public static string NextSceneName { get; set; }
 
@@ -16,4 +18,3 @@ namespace FishingGame
         }
     }
 }
-
